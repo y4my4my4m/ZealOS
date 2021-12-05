@@ -1,5 +1,5 @@
 // Set game palette
-#include "PaletteEditor/Palettes/Sand"
+#include "PaletteEditor/Palettes/Sand"
 PaletteSetSand(FALSE);
 
 #define DROPS_NUM 			0x60000
@@ -296,7 +296,7 @@ U0 DrawFrame(CTask *task, CDC *dc)
 	GrPrint(dc, cx, cy, "Particles:%d", drop_count);
 }
 
-U0 DrawDrops(CTask *, CDC *dc, I64 w, I64 h)
+U0 DrawDrops(CTask *, CDC *dc)
 {
 	I64 i, k;
 
@@ -314,12 +314,10 @@ U0 DrawDrops(CTask *, CDC *dc, I64 w, I64 h)
 				//sand
 				case YELLOW:
 					GrPlot(dc, drops[i].x, drops[i].y);
-					UpdateSand(i, w, h);
 					break;
 				//water
 				case BLUE:
 					GrPlot(dc, drops[i].x, drops[i].y);
-					UpdateWater(i, w, h);
 					break;
 				//wood
 				case BROWN:
@@ -328,12 +326,10 @@ U0 DrawDrops(CTask *, CDC *dc, I64 w, I64 h)
 				//fire
 				case RED:
 					GrPlot(dc, drops[i].x, drops[i].y);
-					UpdateFire(i, w, h);
 					break;
 				//smoke
 				case LTGRAY:
 					GrPlot(dc, drops[i].x, drops[i].y);
-					UpdateSmoke(i, w, h);
 					break;
 				//eraser
 				case WHITE:
@@ -347,12 +343,7 @@ U0 DrawIt(CTask *task, CDC *dc)
 {
 	U32 rx, ry;
 	DrawFrame(task, dc);
-	DrawDrops(
-			task,
-			dc,
-			Fs->parent_task->pix_width,
-			Fs->parent_task->pix_height
-	);
+	DrawDrops(task, dc);
 	UpdateCurBase(task, dc);
 
 	if (Bt(kbd.down_bitmap, sc_1))
@@ -470,6 +461,48 @@ U0 DrawIt(CTask *task, CDC *dc)
 
 U0 AnimateTask(I64)
 {
+	I64 i, k, w=Fs->parent_task->pix_width, h=Fs->parent_task->pix_height;
+
+	while (TRUE)
+	{
+	
+		for (i = 0; i < DROPS_NUM; i++)
+		{
+			cur_dc->color = drops[i].color;
+			if (drops[i].y >= 0) //&& GrPeek(dc, drops[i].x, drops[i].y) == WHITE)
+			{
+				switch (drops[i].color)
+				{
+					//rock
+					case DKGRAY:	
+						break;
+					//sand
+					case YELLOW:
+						UpdateSand(i, w, h);
+						break;
+					//water
+					case BLUE:
+						UpdateWater(i, w, h);
+						break;
+					//wood
+					case BROWN:
+						break;
+					//fire
+					case RED:
+						UpdateFire(i, w, h);
+						break;
+					//smoke
+					case LTGRAY:
+						UpdateSmoke(i, w, h);
+						break;
+					//eraser
+					case WHITE:
+						break;
+				}
+			}
+		}
+	Sleep(8);
+	}
 }
 
 
@@ -479,7 +512,7 @@ U0 Init()
 	MemSet(drops,  0, sizeof(drops));
 }
 
-U0 RainDrops()
+U0 SandWorld()
 {
 	I64 ch, sc;
 
@@ -537,4 +570,4 @@ U0 RainDrops()
 	DCDel(cur_dc);
 }
 
-RainDrops;
+SandWorld;
