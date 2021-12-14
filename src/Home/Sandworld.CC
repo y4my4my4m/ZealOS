@@ -339,12 +339,12 @@ U0 DrawDrops(CTask *, CDC *dc)
 		}
 	}
 }
-U0 DrawIt(CTask *task, CDC *dc)
+
+
+U0 InputController()
 {
+
 	U32 rx, ry;
-	DrawFrame(task, dc);
-	DrawDrops(task, dc);
-	UpdateCurBase(task, dc);
 
 	if (Bt(kbd.down_bitmap, sc_1))
 		selection = 0;
@@ -358,7 +358,6 @@ U0 DrawIt(CTask *task, CDC *dc)
 		selection = 4;
 	if (Bt(kbd.down_bitmap, sc_6))
 		selection = 5;
-	
 	if(mouse.lb)
 	{
 
@@ -462,14 +461,14 @@ U0 DrawIt(CTask *task, CDC *dc)
 U0 AnimateTask(I64)
 {
 	I64 i, k, w=Fs->parent_task->pix_width, h=Fs->parent_task->pix_height;
-
+
 	while (TRUE)
 	{
 	
 		for (i = 0; i < DROPS_NUM; i++)
 		{
 			cur_dc->color = drops[i].color;
-			if (drops[i].y >= 0) //&& GrPeek(dc, drops[i].x, drops[i].y) == WHITE)
+			if (drops[i].y >= 0) //&& GrPeek(dc, drops[i].x, drops[i].y) == WHITE)
 			{
 				switch (drops[i].color)
 				{
@@ -501,10 +500,17 @@ U0 AnimateTask(I64)
 				}
 			}
 		}
-	Sleep(8);
+	Sleep(9);
 	}
 }
 
+U0 DrawIt(CTask *task, CDC *dc)
+{
+	InputController();
+	DrawFrame(task, dc);
+	DrawDrops(task, dc);
+	UpdateCurBase(task, dc);
+}
 
 U0 Init()
 {
@@ -542,6 +548,7 @@ U0 SandWorld()
 
 	Init;
 	//Fs->animate_task = Spawn(&AnimateSand, NULL, "Animate",, Fs);
+
 	Fs->animate_task = Spawn(&AnimateTask, NULL, "Animate",, Fs);
 	Fs->draw_it		 = &DrawIt;
 	if(sizeof(drops) >= DROPS_NUM)
