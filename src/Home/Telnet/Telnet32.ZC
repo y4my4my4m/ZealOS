@@ -83,15 +83,25 @@ U0 HandleControlCodes(U8 ch) {
         break;
       case 10: // LF (Line Feed)
         term.cursor_y++;
+        // if (term.cursor_y >= term.window_height) {
+        //   term.cursor_y = 0; // reset Y position to 0 when it exceeds window height
+        // }
+        // If the next character is CR, ignore it
+        // TODO: dont directly manipulate the buffer
+        // if (*(term.buffer + 1) == 13) term.buffer++;
         break;
       case 11: // VT (Vertical Tab)
         SysLog("Vertical Tab\n");
         break;
       case 12: // FF (Form Feed)
         DocClear(term.doc);
+        // term.cursor_x = 0;
+        // term.cursor_y = 0;
         break;
       case 13: // CR (Carriage Return)
-        term.cursor_y++;
+        term.cursor_x = 0;
+        // If the next character is LF, ignore it
+        // if (*(term.buffer + 1) == 10) term.buffer++;
         break;
       case 14: // SO (Shift Out) - Switch to an alternate character set
       case 15: // SI (Shift In)  - Switch back to the default character set
@@ -502,22 +512,27 @@ U0 TerminalTask() {
                 case 'E':
                   // Cursor Next Line
                   SysLog("Cursor Next Line\n");
-                  // "$$CM+TY,0,+%d$$", ansi_code[0];
-                  DocPrint(term.task->put_doc, "\n");
+                  term.cursor_x = 0;
+                  term.cursor_y++;
+                  if (term.cursor_y >= term.window_height) {
+                    // scroll
+                  }
                   ptr++;
                   break;
                 case 'F':
                   // Cursor Previous Line
                   SysLog("Cursor Previous Line\n");
+                  term.cursor_x = 0;
                   term.cursor_y -= ansi_code[0];
-                  // "\n";
+                  if (term.cursor_y < 0) {
+                    term.cursor_y = 0; // prevent y from going below 0
+                  }
                   ptr++;
                   break;
                 case 'G':
                   // Cursor Horizontal Absolute	
                   SysLog("Cursor Horizontal Absolute\n");
                   term.cursor_x = ansi_code[0];
-                  // "\n";
                   ptr++;
                   break;
                 case 'H':
@@ -536,13 +551,15 @@ U0 TerminalTask() {
                   }
                   // SysLog("H or f AFTER row:%d, col:%d, cnt:%d\n", row, col, ansi_param_count);
 
-                  if (row > term.window_height)
-                    row = term.window_height-1;
-                  if (col > term.window_width)
-                    col = term.window_width-1;
+                  if (row >= term.window_height)
+                    row = term.window_height;
+                  if (col >= term.window_width)
+                    col = term.window_width;
                   // "$$CM,0,0$$";
-                  term.cursor_x = col-1;
-                  term.cursor_y = row-1;
+                  // term.cursor_x = col-1;
+                  // term.cursor_y = row-1;
+                  term.cursor_x = col;
+                  term.cursor_y = row;
                   ptr++;
                   break;
                 case 'J':
@@ -557,6 +574,8 @@ U0 TerminalTask() {
                   } else if (ansi_code[0] == 2) {
                     // Erase entire display
                     DocClear(term.doc);
+                    term.cursor_x = 0;
+                    term.cursor_y = 0;
                   }
                   ptr++;
                   break;
@@ -669,6 +688,8 @@ U0 TerminalTask() {
       if (redraw_needed) {
         // TerminalDrawIt(term.task, term.task);
         DocClear(term.doc);
+        term.cursor_x = 0;
+        term.cursor_y = 0;
         redraw_needed = TRUE;
       }
     } else {
