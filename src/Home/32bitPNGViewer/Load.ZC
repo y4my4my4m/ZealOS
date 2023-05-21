@@ -1,0 +1,4 @@
+#define include_noreindex #include
+include_noreindex "Lib/uPNG32";
+include_noreindex "Viewer";
+InitViewer;

@@ -1,0 +1,96 @@
+class @viewer {
+  CTask *windowTask;
+  CDC **images;
+  I64 pressing_button;
+  I64 prev_lb_state;
+  I64 prev_rb_state;
+};
+@viewer viewer;
+
+#define IMG_MAIN viewer.images[0]
+
+
+I64		i, j, x, y;
+CBGR24	color;
+
+U32 ImagePeek32Bit(CDC *dc, I64 x, I64 y)
+{
+    return dc->body[x + y * dc->width_internal];
+}
+
+I0 DrawPixel(I64 x, I64 y, CBGR24 color)
+{
+	text.fb_alias[x + y * GR_WIDTH] = color;
+}
+
+U0 DrawViewer(CTask *, CDC *dc) {
+  GrBlot(dc, 3, 2, IMG_MAIN);
+}
+
+U0 InitViewer() {
+  MemSet(&viewer, sizeof(@viewer), NULL);
+  viewer.windowTask = Fs;
+  viewer.windowTask->win_width = 35;
+  WinHorz((TEXT_COLS / 2) - (viewer.windowTask->win_width / 2),
+          (TEXT_COLS / 2) - (viewer.windowTask->win_width / 2) +
+              (viewer.windowTask->win_width - 1),
+          viewer.windowTask);
+  viewer.windowTask->win_height = 15;
+  WinVert((TEXT_ROWS / 2) - (viewer.windowTask->win_height / 2),
+          (TEXT_ROWS / 2) - (viewer.windowTask->win_height / 2) +
+              (viewer.windowTask->win_height - 1),
+          viewer.windowTask);
+  // WinBorder(OFF);
+  DocCursor(OFF);
+  viewer.images = CAlloc(sizeof(CDC *) * 32);
+  // IMG_MAIN = PNGReadToColorArray("Images/ROME.png");
+
+  viewer.windowTask->draw_it = &DrawViewer;
+  
+  I64 height, width;
+
+  DocClear;
+  U8 *res = NULL;
+  // while (1) {
+  //   StrCopy(viewer.windowTask->task_title, "Image Viewer");
+  //   Sleep(1);
+  // }
+  // SysLog("HEX:%X\n",ImagePeek32Bit(IMG_MAIN, 0, 0));
+  // SysLog("HEX:%X\n",GrPeek(IMG_MAIN, 0, 0));
+  CBGR24 **colorArray = PNGReadToColorArray("Images/ROME.png");  // Assuming you read file into colorArray
+
+  while (1)
+  {
+    for ( height = 0; height < 768; height++)
+      for ( width = 0; width < 1024; width++)
+      {
+        CBGR24 pixelColor = colorArray[height][width];  // Grab the pixel color from your color array
+
+        U32 r = pixelColor.r;
+        U32 g = pixelColor.g;
+        U32 b = pixelColor.b;
+        U32 a = 0xFF;  // Maximum opacity
+
+        U32 color32 = (a << 24) | (r << 16) | (g << 8) | b;
+
+        DrawPixel(width, height, color32);  // Draw the pixel using the color from the color array
+      }
+
+    Sleep(10);
+  }
+  I64 i;
+  // After all pixels have been drawn
+  for (i = 0; i < height; i++) {
+    Free(colorArray[i]);
+  }
+  Free(colorArray);
+
+}
+
+// Spawn(&ViewerTask, , "Image Viewer Task", 1);
+// U0 ViewerTask() {
+//   // I64 i;
+//   while (1) {
+//     Sleep(1);
+//   }
+// }
