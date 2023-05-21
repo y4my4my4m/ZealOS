@@ -7,24 +7,98 @@ class @viewer {
 };
 @viewer viewer;
 
+U8 windowPixelMap[GR_HEIGHT][GR_WIDTH]; 
+U8 old_windowPixelMap[GR_HEIGHT][GR_WIDTH]; 
+
 #define IMG_MAIN viewer.images[0]
 
-
-I64		i, j, x, y;
+Bool is_done = FALSE;
+I64 y, x;
 CBGR24	color;
+CBGR24 **colorArray = PNGReadToColorArray("Images/ROME.png");
 
-U32 ImagePeek32Bit(CDC *dc, I64 x, I64 y)
-{
-    return dc->body[x + y * dc->width_internal];
+F64 DifferencePercentage() {
+    I64 totalPixels = 0;
+    F64 differentPixels = 0;
+    I64 i, j;
+    for ( i = 0; i < GR_HEIGHT; i++) {
+        for ( j = 0; j < GR_WIDTH; j++) {
+            if (old_windowPixelMap[i][j] != windowPixelMap[i][j]) {
+                differentPixels++;
+            }
+            totalPixels++;
+        }
+    }
+    return (differentPixels / totalPixels) * 100;
+}
+
+
+Bool WindowCalcTask() {
+  while (1) {
+    // Clear the windowPixelMap
+    MemCopy(old_windowPixelMap, windowPixelMap, sizeof(windowPixelMap));
+
+    MemSet(windowPixelMap, 0, sizeof(windowPixelMap));
+    I64 task_count = 0, win_y, win_x;
+    CTask* current_task = sys_task;
+    while (current_task != NULL && task_count < sys_num_spawned_tasks) {
+      if(!Bt(&current_task->win_inhibit, WIf_SELF_KEY_DESC)){
+        for ( win_y = (current_task->win_top*8) - 8; win_y < (current_task->win_bottom*8) + 16; win_y++) {
+          for ( win_x = (current_task->win_left*8) - 8; win_x < (current_task->win_right*8) + 16; win_x++) {
+            windowPixelMap[win_y][win_x] = 1;
+          }
+        }
+      }
+      current_task = current_task->next_task;
+      task_count++;
+    }
+
+    // Check if the map has changed
+    // if (!MapsAreEqual()) {
+    //     LFBFlush();
+    // }
+    F64 diffPercentage = DifferencePercentage;
+    SysLog("DifferencePercentage: %f\n", diffPercentage);
+    if (diffPercentage > 0.5) {
+        LFBFlush();
+    }
+    Refresh;
+  }
+  return FALSE;  // This task should not end on its own
 }
 
 I0 DrawPixel(I64 x, I64 y, CBGR24 color)
 {
-	text.fb_alias[x + y * GR_WIDTH] = color;
+  text.fb_alias[x + y * GR_WIDTH] = color;
 }
 
-U0 DrawViewer(CTask *, CDC *dc) {
-  GrBlot(dc, 3, 2, IMG_MAIN);
+U0 DrawViewer(CTask *) {
+  // Sleep(winmgr.fps);
+  for ( y = (sys_task->win_bottom*8)+16; y < GR_HEIGHT; y++)
+  {
+    for ( x = 0; x < GR_WIDTH; x++)
+    {
+      CBGR24 pixelColor = colorArray[y][x];  // Grab the pixel color from your color array
+
+      U32 r = pixelColor.r;
+      U32 g = pixelColor.g;
+      U32 b = pixelColor.b;
+      U32 a = 0xFF;  // Maximum opacity
+
+      U32 color32 = (a << 24) | (r << 16) | (g << 8) | b;
+
+      if (windowPixelMap[y][x] == 0) {
+        DrawPixel(x, y, color32);
+      }
+      // png in the window only
+      // if (WinInside(x, y, viewer.windowTask))
+      // {
+      //     DrawPixel(x, y, color32);
+      // }
+
+      // DrawPixel(width, height, color32);  // Draw the pixel using the color from the color array
+    }
+  }
 }
 
 U0 InitViewer() {
@@ -40,57 +114,75 @@ U0 InitViewer() {
           (TEXT_ROWS / 2) - (viewer.windowTask->win_height / 2) +
               (viewer.windowTask->win_height - 1),
           viewer.windowTask);
+
   // WinBorder(OFF);
   DocCursor(OFF);
   viewer.images = CAlloc(sizeof(CDC *) * 32);
-  // IMG_MAIN = PNGReadToColorArray("Images/ROME.png");
 
+  Spawn(&WindowCalcTask, , "Window Calc Task", 1);
   viewer.windowTask->draw_it = &DrawViewer;
   
-  I64 height, width;
-
-  DocClear;
-  U8 *res = NULL;
-  // while (1) {
-  //   StrCopy(viewer.windowTask->task_title, "Image Viewer");
-  //   Sleep(1);
+  // SysLog("sys_num_spawned_tasks:%d\n", sys_num_spawned_tasks);
+  // I64 task_count = 0;
+  // CTask* current_task = sys_task;
+  // while (current_task != NULL && task_count < sys_num_spawned_tasks)
+  // {
+  //   current_task = current_task->next_task;
+  //   task_count++;
   // }
-  // SysLog("HEX:%X\n",ImagePeek32Bit(IMG_MAIN, 0, 0));
-  // SysLog("HEX:%X\n",GrPeek(IMG_MAIN, 0, 0));
-  CBGR24 **colorArray = PNGReadToColorArray("Images/ROME.png");  // Assuming you read file into colorArray
+  // SysLog("task_count:%d\n", task_count);
 
-  while (1)
-  {
-    for ( height = 0; height < 768; height++)
-      for ( width = 0; width < 1024; width++)
-      {
-        CBGR24 pixelColor = colorArray[height][width];  // Grab the pixel color from your color array
-
-        U32 r = pixelColor.r;
-        U32 g = pixelColor.g;
-        U32 b = pixelColor.b;
-        U32 a = 0xFF;  // Maximum opacity
-
-        U32 color32 = (a << 24) | (r << 16) | (g << 8) | b;
-
-        DrawPixel(width, height, color32);  // Draw the pixel using the color from the color array
-      }
-
-    Sleep(10);
-  }
+  I64 sc = 0;
   I64 i;
-  // After all pixels have been drawn
-  for (i = 0; i < height; i++) {
-    Free(colorArray[i]);
+
+  // DocClear;
+
+  try
+  {
+    while (!is_done)
+    {
+      // The silliest v-sync in the world
+      // Sleep(winmgr.fps);
+      // LFBFlush;
+      switch (KeyGet(&sc))
+      {
+        case 0:
+          switch (sc.u8[0])
+          {
+            case SC_CURSOR_UP:
+            case SC_CURSOR_LEFT:
+              break;
+            case SC_CURSOR_DOWN:
+            case SC_CURSOR_RIGHT:
+              break;		
+          }
+          break;
+        case CH_CTRLO:
+          // current_palette = "";
+          // current_palette = PaletteSelect;
+          break;
+
+        case CH_SHIFT_ESC:
+          LFBFlush;
+          // DocClear;
+          is_done = TRUE;
+          PutExcept;
+      }
+      // Refresh;
+      // WinZBufUpdate;
+      // WinZBufFill(Fs);
+    }
+
+    // After all pixels have been drawn
+    for (i = 0; i < y; i++) {
+      Free(colorArray[i]);
+    }
+    Free(colorArray);
+    LFBFlush;
+    // WinZBufUpdate;
+    // WinZBufFill(Fs);
   }
-  Free(colorArray);
+  catch
+    PutExcept;
 
 }
-
-// Spawn(&ViewerTask, , "Image Viewer Task", 1);
-// U0 ViewerTask() {
-//   // I64 i;
-//   while (1) {
-//     Sleep(1);
-//   }
-// }
