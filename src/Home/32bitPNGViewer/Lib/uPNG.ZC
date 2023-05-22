@@ -38,8 +38,7 @@ I64 cond(Bool bool, I64 true_val,
    distribution.
 
    Converted to HolyC by Alec Murphy
-   Converted to ZealC and adapted to 32bit color by y4my4m
-   by y4my4m
+   Converted to ZealC by y4my4m
  */
 
 #define UPNG_EOK 0
@@ -1208,79 +1207,6 @@ CDC *PNGRead(U8 *filename) {
   }
   upng_Free(upng);
   return dc;
-}
-
-CBGR24** PNGReadToColorArray(U8 *filename) {
-  CBGR24 cbgr24;
-
-  upng_t *upng;
-  upng = upng_new_from_file(filename);
-
-  CBGR24 **colorArray = NULL;
-  I64 i, j;
-  I64 w, h, bpp;
-  U8 *ptr;
-
-  if (upng_decode(upng)) {
-    upng_Free(upng);
-    return colorArray;
-  }
-
-  w = upng_get_width(upng);
-  h = upng_get_height(upng);
-  bpp = upng_get_bpp(upng) / 8; // **BYTES** per pixel.
-
-  // Allocate memory for colorArray
-  // colorArray = malloc(h * sizeof(CBGR24 *));
-  // colorArray[i] = (CBGR24 *)malloc(w * sizeof(CBGR24));
-  // colorArray = 9000000;
-  // for(i = 0; i < h; i++) {
-  //   colorArray[i] = 9000;
-  //     for (j = 0; j < 768; j++)
-  //     {
-  //       colorArray[i][j] = 9000;
-  //     }
-  // }
-
-  // colorArray = (CBGR24 **)MAlloc(h * sizeof(CBGR24 *));  // Allocate array of pointers
-  // for(I64 height = 0; height < h; height++) {
-  //   colorArray[height] = (CBGR24 *)MAlloc(w * sizeof(CBGR24));  // Allocate each row
-  // }
-  I64 height;
-  colorArray = MAlloc(h * sizeof(CBGR24 *));  // Allocate array of pointers
-  for(height = 0; height < h; height++) {
-    colorArray[height] = MAlloc(w * sizeof(CBGR24));  // Allocate each row
-  }
-
-
-  ptr = upng_get_buffer(upng);
-
-  for (i = 0; i < h; i++) {
-    for (j = 0; j < w; j++, ptr += bpp) {
-      switch (upng->format) {
-      case UPNG_RGBA16:
-      case UPNG_RGBA8:
-        cbgr24.r = ptr[0];
-        cbgr24.g = ptr[1];
-        cbgr24.b = ptr[2];
-        // cbgr24.a = (upng->format == UPNG_RGBA16 || upng->format == UPNG_RGBA8) ? ptr[3] : 0;
-        colorArray[i][j] = cbgr24;
-        break;
-      case UPNG_RGB16:
-      case UPNG_RGB8:
-        cbgr24.r = ptr[0];
-        cbgr24.g = ptr[1];
-        cbgr24.b = ptr[2];
-        // cbgr24.a = 0;
-        colorArray[i][j] = cbgr24;
-        break;
-      default:
-        break;
-      }
-    }
-  }
-  upng_Free(upng);
-  return colorArray;
 }
 
 Fs->put_doc = prevdoc;
